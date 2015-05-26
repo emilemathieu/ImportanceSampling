@@ -61,6 +61,8 @@ function []=test_importance_sampling(N,K,fonction_payoff,m)
   printf("Importance N=%d, %f +- %f, mean(drift)=%f\n", N, estimation, erreur, mean(m));
 endfunction
 
+
+//// Find_optimal_drift from Paul GLASSERMAN
 function [m]=Find_optimal_drift(K,fonction_payoff)
     m_old=zeros(d,1);
     for i=1:100
@@ -77,6 +79,39 @@ function [m]=Find_optimal_drift(K,fonction_payoff)
         m_old=m;
     end
     m=repmat(m,1,N);
+endfunction
+
+
+//// Find_optimal_drift from Bouhari AROUNA
+function[gamma_n]=gamma_coeff(alpha,Beta,n)
+    gamma_n = alpha/(Beta+n);
+endfunction
+
+function[U]=U_coeff(n)
+    U = (n==0)*100+(n~=0)*(sqrt(log(n)/6)+100);
+endfunction
+
+function[sigma_n]=sigma_function(sigma_n_old,norme)
+    sigma_n = sigma_n_old;
+    U=U_coeff(sigma_n_old);
+    sigma_n(length(sigma_n)+1)=sigma_n_old
+endfunction
+
+function [m]=Find_optimal_drift_bis(K,fonction_payoff)
+   m_old=zeros(d,1);
+   alpha=1; Beta=1;
+   for n=1:10000
+       //disp(n)
+       Z_n=rand(d,1,"gauss");
+       W_T = sqrt(T) * Sigma * Z_n;
+       S_T = diag(S_0) * (exp(T * (r - sigma.^2/2) + W_T ) );
+       payoff = exp(-r*T) * fonction_payoff(a,S_T,K);
+       Y_n = (m_old-Z_n)*(payoff**2)*exp(-m_old'*Z_n+0.5*m_old'*m_old);
+       m = m_old - gamma_coeff(alpha,Beta,n)*Y_n;
+       //disp(m)
+   end
+   //m=repmat(mean(m),d,N);
+   m=repmat(m,1,N);
 endfunction
 
 //////////// Main Function //////////
@@ -114,27 +149,36 @@ N=10000; //Nombre de termes pour la méthode de Monte Carlo
 
 
 K= 1.5 * a'*S_0; // option out of the money
+//disp(Find_optimal_drift_bis(K,payoff_call_basket))
 m=Find_optimal_drift(K,payoff_call_basket);
+mbis=Find_optimal_drift_bis(K,payoff_call_basket);
 test_simple(N,K,payoff_call_basket);
 test_avec_vc(N,K,payoff_call_basket); // la variable de controle augmente la variance !
 test_importance_sampling(N,K,payoff_call_basket,m);
+test_importance_sampling(N,K,payoff_call_basket,mbis);
 
 K= 1.0 * a'*S_0; // option at the money
+mbis=Find_optimal_drift_bis(K,payoff_call_basket);
 m=Find_optimal_drift(K,payoff_call_basket);
 test_simple(N,K,payoff_call_basket);
 test_avec_vc(N,K,payoff_call_basket); // la variable de controle marche mais pas terrible
 test_importance_sampling(N,K,payoff_call_basket,m);
+test_importance_sampling(N,K,payoff_call_basket,mbis);
 
 K= 0.8 * a'*S_0; // option in the money
+mbis=Find_optimal_drift_bis(K,payoff_call_basket);
 m=Find_optimal_drift(K,payoff_call_basket);
 test_simple(N,K,payoff_call_basket);
 test_avec_vc(N,K,payoff_call_basket); 
 test_importance_sampling(N,K,payoff_call_basket,m);
+test_importance_sampling(N,K,payoff_call_basket,mbis);
     // ce coup ci la variable  de controle sert a qq chose !
 
 // Plus K est petit et mieux ca marche
 K= 0.5 * a'*S_0;
+mbis=Find_optimal_drift_bis(K,payoff_call_basket);
 m=Find_optimal_drift(K,payoff_call_basket);
 test_simple(N,K,payoff_call_basket);
 test_avec_vc(N,K,payoff_call_basket); 
 test_importance_sampling(N,K,payoff_call_basket,m);
+test_importance_sampling(N,K,payoff_call_basket,mbis);
