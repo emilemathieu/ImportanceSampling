@@ -53,7 +53,7 @@ function []=test_importance_sampling(N,K,fonction_payoff,m)
   W_T = sqrt(T) * rand(d,N,"gauss");
   S_T = diag(S_0) * (exp(T * diag(r - sigma.^2/2) * ones(d,N) + (Sigma * (W_T + m) ) ) );
   payoff = exp(-r*T) * fonction_payoff(a,S_T,K);
-  importance = exp(-sum(W_T.*m,1)-sum(m.*m,1)*T/2) ;
+  importance = exp(-sum(W_T.*m,1)-sum(m.*m,1)*T/2);
   payoff = importance .* payoff; 
   estimation=mean(payoff);  // estimation de la moyenne
   ecart_type=stdev(payoff); // estimation de l'ecart type
@@ -63,7 +63,7 @@ endfunction
 
 
 //// Find_optimal_drift from Paul GLASSERMAN
-function [m]=Find_optimal_drift(K,fonction_payoff)
+function [m]=Find_optimal_drift_GLAS(K,fonction_payoff)
     m_old=zeros(d,1);
     for i=1:100
         //disp(i)
@@ -97,7 +97,7 @@ function[sigma_n]=sigma_function(sigma_n_old,norme)
     sigma_n(length(sigma_n)+1)=sigma_n_old
 endfunction
 
-function [m]=Find_optimal_drift_bis(K,fonction_payoff)
+function [m]=Find_optimal_drift_Aroun(K,fonction_payoff)
    m_old=zeros(d,1);
    alpha=1; Beta=1;
    for n=1:10000
@@ -113,6 +113,26 @@ function [m]=Find_optimal_drift_bis(K,fonction_payoff)
    //m=repmat(mean(m),d,N);
    m=repmat(m,1,N);
 endfunction
+
+//// Find_optimal_drift from direct minimization with scilab optim function
+
+
+function [m]=Find_optimal_drift_sci(K,fonction_payoff)
+    m=zeros(d,N);
+    for i=1:N
+        G_T = rand(d,1,"gauss");
+        function [f, g, ind]=cost(x, ind)
+            f = exp(-x'*G_T+0.5*x'*x);
+            g = f*(x-G_T);
+        endfunction
+        m0=zeros(d,1);
+        [fopt, mopt] = optim(cost, m0);
+        m(:,i)=mopt;
+    end
+    m = mean(m,2);
+    m = repmat(m,1,N);
+endfunction
+
 
 //////////// Main Function //////////
 
@@ -149,36 +169,54 @@ N=10000; //Nombre de termes pour la méthode de Monte Carlo
 
 
 K= 1.5 * a'*S_0; // option out of the money
-//disp(Find_optimal_drift_bis(K,payoff_call_basket))
-m=Find_optimal_drift(K,payoff_call_basket);
-mbis=Find_optimal_drift_bis(K,payoff_call_basket);
+//disp(Find_optimal_drift_Arouna(K,payoff_call_basket))
+m0=0.1*ones(d,N);
+//m=Find_optimal_drift_GLAS(K,payoff_call_basket);
+mbis=Find_optimal_drift_Aroun(K,payoff_call_basket);
+mter=Find_optimal_drift_sci(K,payoff_call_basket);
+//disp(sum(m,2))
+//disp(sum(mbis,2))
 test_simple(N,K,payoff_call_basket);
 test_avec_vc(N,K,payoff_call_basket); // la variable de controle augmente la variance !
+//test_importance_sampling(N,K,payoff_call_basket,m0);
 test_importance_sampling(N,K,payoff_call_basket,m);
 test_importance_sampling(N,K,payoff_call_basket,mbis);
+test_importance_sampling(N,K,payoff_call_basket,mter);
 
 K= 1.0 * a'*S_0; // option at the money
-mbis=Find_optimal_drift_bis(K,payoff_call_basket);
-m=Find_optimal_drift(K,payoff_call_basket);
+mbis=Find_optimal_drift_Aroun(K,payoff_call_basket);
+m=Find_optimal_drift_GLAS(K,payoff_call_basket);
+//disp(sum(m,2))
+//disp(sum(mbis,2))
 test_simple(N,K,payoff_call_basket);
 test_avec_vc(N,K,payoff_call_basket); // la variable de controle marche mais pas terrible
+//test_importance_sampling(N,K,payoff_call_basket,m0);
 test_importance_sampling(N,K,payoff_call_basket,m);
 test_importance_sampling(N,K,payoff_call_basket,mbis);
+test_importance_sampling(N,K,payoff_call_basket,mter);
 
 K= 0.8 * a'*S_0; // option in the money
-mbis=Find_optimal_drift_bis(K,payoff_call_basket);
-m=Find_optimal_drift(K,payoff_call_basket);
+mbis=Find_optimal_drift_Aroun(K,payoff_call_basket);
+m=Find_optimal_drift_GLAS(K,payoff_call_basket);
+//disp(sum(m,2))
+//disp(sum(mbis,2))
 test_simple(N,K,payoff_call_basket);
 test_avec_vc(N,K,payoff_call_basket); 
+//test_importance_sampling(N,K,payoff_call_basket,m0);
 test_importance_sampling(N,K,payoff_call_basket,m);
 test_importance_sampling(N,K,payoff_call_basket,mbis);
+test_importance_sampling(N,K,payoff_call_basket,mter);
     // ce coup ci la variable  de controle sert a qq chose !
 
 // Plus K est petit et mieux ca marche
 K= 0.5 * a'*S_0;
-mbis=Find_optimal_drift_bis(K,payoff_call_basket);
-m=Find_optimal_drift(K,payoff_call_basket);
+mbis=Find_optimal_drift_Aroun(K,payoff_call_basket);
+m=Find_optimal_drift_GLAS(K,payoff_call_basket);
+//disp(sum(m,2))
+//disp(sum(mbis,2))
 test_simple(N,K,payoff_call_basket);
 test_avec_vc(N,K,payoff_call_basket); 
+//test_importance_sampling(N,K,payoff_call_basket,m0);
 test_importance_sampling(N,K,payoff_call_basket,m);
 test_importance_sampling(N,K,payoff_call_basket,mbis);
+test_importance_sampling(N,K,payoff_call_basket,mter);
